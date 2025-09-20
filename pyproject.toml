@@ -1,0 +1,110 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "slp-replay-converter-web"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "ianwal", email = "git.overarch017@passinbox.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = []
+
+[project.urls]
+Documentation = "https://github.com/ianwal/slp-replay-converter-web#readme"
+Issues = "https://github.com/ianwal/slp-replay-converter-web/issues"
+Source = "https://github.com/ianwal/slp-replay-converter-web"
+
+[tool.hatch.version]
+path = "src/slp_replay_converter_web/__about__.py"
+
+# Format environment
+
+[tool.hatch.envs.format]
+skip-install = true # Don't install dedupe. We just need to format.
+dependencies = [
+  "black",
+]
+
+[tool.hatch.envs.format.scripts]
+format = "black src tests {args}"
+
+# Lint environment
+
+[tool.hatch.envs.lint]
+dependencies = [
+  "black",
+  "ruff",
+]
+
+[tool.hatch.envs.lint.scripts]
+format = "black --check src tests {args}"
+lint = "ruff check src tests {args}"
+
+[tool.black]
+target-version = ["py310", "py311", "py312", "py313"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+# Enable the pycodestyle (`E`) and Pyflakes (`F`) rules by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+lint.select = ["E", "F"]
+lint.ignore = []
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+lint.fixable = ["ALL"]
+lint.unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "ThreatExchange",
+]
+lint.per-file-ignores = {"tests/**/*" = ["PLR2004", "S101", "TID252"]}
+
+# Same as Black.
+line-length = 120
+
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.12.
+target-version = "py312"
