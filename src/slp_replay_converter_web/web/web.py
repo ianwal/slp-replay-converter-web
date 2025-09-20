@@ -1,4 +1,4 @@
-from flask import Flask, request, request
+from flask import Flask, request, request, render_template, send_from_directory
 from flask_session import Session
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -18,23 +18,14 @@ def allowed_file(filename: str):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(Path(app.root_path) / 'static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
 @app.route("/")
 def home():
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <body>
-
-    <h2>Upload File</h2>
-    <form action = "/convert" method = "POST" 
-    enctype = "multipart/form-data">
-    <input type = "file" name = "file" />
-    <input type = "submit"/>
-    </form>
-
-    </body>
-    </html>
-    '''
+    return render_template("index.html")
 
 
 def convert_replay(slp_replay: Path):
@@ -45,7 +36,9 @@ def convert_replay(slp_replay: Path):
     tmpdir.mkdir(parents=True)
     subprocess.run(["slp2mp4", "--output-directory", tmpdir, "single", slp_replay], check=True)
     files = glob.glob(f"{tmpdir}/*")
-    assert len(files) == 1
+    if len(files) != 1:
+        print(files)
+        assert len(files) == 1
     converted_filepath = files[0]
     converted_file = open(converted_filepath, "r+b").read()
     shutil.rmtree(tmpdir)
@@ -85,7 +78,7 @@ def upload_file():
     return flask.send_file(
         converted_file,
         as_attachment=True,
-        download_name="processed_" + Path(filename).stem + ".mp4",
+        download_name="slp_" + Path(filename).stem + ".mp4",
         mimetype="application/octet-stream",
     )
 

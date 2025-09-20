@@ -1,0 +1,3 @@
+[submodule "slp2mp4"]
+	path = slp2mp4
+	url = https://github.com/davisdude/slp2mp4.git

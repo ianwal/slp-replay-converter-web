@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slippi to Video Converter</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+    <div id="parent">
+        <div class="child" id="title">
+            <h1>Slippi Replay to Video Converter</h1>
+        </div>
+
+        <div class="container">
+            <h2>Upload .slp File</h2>
+            <form action="/convert" method="POST" enctype="multipart/form-data">
+                <input type="file" name="file" />
+                <input type="submit" value="Upload & Convert" />
+            </form>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
