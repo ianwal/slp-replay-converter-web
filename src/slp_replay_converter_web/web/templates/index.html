@@ -22,10 +22,13 @@
                 <input type="file" name="file" />
                 <input type="submit" value="Upload & Convert" />
             </form>
+            <form id="submitConvertForm" action="/convert_async" method="POST" enctype="multipart/form-data">
+                <input type="file" name="file" />
+                <input type="submit" value="Upload & Convert (async)" />
+            </form>
             <h2 id="convert_queue_size">Loading...</h1>
         </div>
     </div>
-
 
     <script>
         const numberElement = document.getElementById("convert_queue_size");
@@ -45,10 +48,86 @@
         }
 
         // Fetch every 5 seconds
-        setInterval(updateQueueSizeText, 5000);
+        const fetchUpdateQueueSizeMs = 5000;
+        setInterval(updateQueueSizeText, fetchUpdateQueueSizeMs);
 
         // Initial fetch immediately
         updateQueueSizeText();
+    </script>
+
+    <script>
+        // List of submitted tasks
+        let activeTasks = []
+
+        document.forms['submitConvertForm'].addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            // TODO: Do something here to show user that form is being submitted
+            fetch(event.target.action, {
+                method: 'POST',
+                body: new URLSearchParams(new FormData(event.target))
+            }).then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json().then(createdTask => { console.log(createdTask); activeTasks.push(createdTask) });
+            }).then((body) => {
+                // TODO handle body
+            }).catch((error) => {
+                // TODO handle error
+                console.error(error);
+            });
+
+            console.log(activeTasks);
+        });
+
+        // Function to fetch new number from API
+        function fetchResults() {
+            try {
+                // TODO: Send multiple at once to avoid a bunch of requests?
+                let i = activeTasks.length - 1;
+                while (i >= 0) {
+                    let taskId = activeTasks[i]["taskId"];
+                    fetch("/api/task_result", {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ taskId: taskId })
+                    }).then(response => {
+                        // Download the file
+                        // Have to do this weird element creation to download the file request.
+                        // Extract filename from Content-Disposition header
+                        const disposition = response.headers.get('Content-Disposition');
+                        let filename = 'downloaded-file';
+                        if (disposition && disposition.includes('filename=')) {
+                            filename = disposition.split('filename=')[1].replace(/"/g, '');
+                        }
+                        response.blob().then(blob => {
+                            const link = document.createElement('a');
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(link.href);
+                        });
+                        // Success
+                        activeTasks.pop();
+                    });
+                    --i;
+                }
+            } catch (err) {
+                console.log("Failed to fetch result: ");
+                console.error(err);
+            }
+        }
+
+        // Fetch result periodically
+        const fetchResultsMs = 1000;
+        let a = fetchResults.bind(activeTasks);
+        setInterval(a, fetchResultsMs);
     </script>
 
 </body>

@@ -7,10 +7,12 @@ import io
 import uuid
 from pathlib import Path
 from .manager import Manager
+import datetime
 
 app = Flask(__name__)
 sess = Session()
 manager = Manager()
+
 
 def allowed_file(filename: str):
     ALLOWED_EXTENSIONS = {'slp'}
@@ -30,6 +32,7 @@ def home():
 @app.errorhandler(RequestEntityTooLarge)
 def file_too_large(e):
     return 'File is too large', RequestEntityTooLarge.code
+
 
 @app.route('/api/convert_queue_size', methods=['GET'])
 def convert_queue_size():
@@ -72,6 +75,26 @@ def upload_file():
         mimetype="application/octet-stream",
     )
 
+
+@app.route("/convert_async", methods=['POST'])
+def upload_file_async():
+    print(f"Received file")
+    return jsonify({"taskId": uuid.uuid4(), "createTimepoint": datetime.datetime.now(datetime.timezone.utc)})
+
+
+@app.route("/api/task_result", methods=['POST'])
+def task_result():
+    print("Received task result request")
+    content = request.json
+    print(content)
+    taskId = content["taskId"]
+    task_result = manager.get_task_result(taskId)
+    return flask.send_file(
+        r"C:\Users\win10pc\slp-replay-converter-web\src\slp_replay_converter_web\web\.tmp\8d17a521-75c3-4bbd-bff7-320f650d7b25.tmp\.tmp_d5873843—c004—4bad—8dcc—728fcf80c0bb.mp4",
+        as_attachment=True,
+        download_name="foo",
+        mimetype="application/octet-stream",
+    )
 
 if __name__ == "__main__":
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit uploads to 16MiB

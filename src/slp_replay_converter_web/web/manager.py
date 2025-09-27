@@ -62,3 +62,7 @@ class Manager:
     def get_queue_size(self) -> int:
         # TODO: Implement
         return 0
+
+    def get_task_result(self, task_id: str) -> bytes | None:
+        # TODO: Implement
+        return None

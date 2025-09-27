@@ -2,12 +2,16 @@
 
 ## Development
 
-Useful commands:
+### Useful Commands
+
+Format code
 
 ```sh
 hatch run lint:format
 ```
 
+Launch local web server
+
 ```sh
-flask --app src/slp_replay_converter_web/web/web.py run --debug
+hatch run web:run
 ```

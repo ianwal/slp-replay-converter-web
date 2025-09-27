@@ -26,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "flask",
+  "flask-session",
 ]
 
 [project.urls]
@@ -36,7 +37,13 @@ Source = "https://github.com/ianwal/slp-replay-converter-web"
 [tool.hatch.version]
 path = "src/slp_replay_converter_web/__about__.py"
 
-# Format environment
+# Local Web Environment
+
+[tool.hatch.envs.web]
+
+[tool.hatch.envs.web.scripts]
+run = "flask --app src/slp_replay_converter_web/web/web.py run"
+
 
 [tool.hatch.envs.format]
 skip-install = true # Don't install dedupe. We just need to format.
