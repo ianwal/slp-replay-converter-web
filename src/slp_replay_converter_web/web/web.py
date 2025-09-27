@@ -6,7 +6,7 @@ import flask
 import io
 import uuid
 from pathlib import Path
-from .manager import Manager
+from .manager import Manager, ConvertTaskResult
 import datetime
 
 app = Flask(__name__)
@@ -78,23 +78,52 @@ def upload_file():
 
 @app.route("/convert_async", methods=['POST'])
 def upload_file_async():
-    print(f"Received file")
-    return jsonify({"taskId": uuid.uuid4(), "createTimepoint": datetime.datetime.now(datetime.timezone.utc)})
+    if "file" not in request.files:
+        print("ERROR: No file uploaded.")
+        return 'No file part in the request', 400
+
+    file = request.files['file']
+    # If the user does not select a file, the browser submits an empty file without a filename.
+    if not file or file.filename == "":
+        print("ERROR: File is empty.")
+        return 'No selected file', 400
+    if not allowed_file(file.filename):
+        print("ERROR: File is not allowed.")
+        return 'File type not allowed', 400
+
+    # Save the replay file
+    filename = secure_filename(file.filename)
+
+    tmpdir = Path(__file__).parent / ".tmp"
+    tmpdir.mkdir(exist_ok=True)
+
+    tmp_replay_file = tmpdir / f"{uuid.uuid4()}.slp"
+    with open(tmp_replay_file, "wb") as f:
+        pass
+    file.save(tmp_replay_file)
+
+    task_id = manager.push_convert_task(tmp_replay_file, "slp_" + Path(filename).stem + ".mp4")
+
+    return jsonify({"taskId": task_id, "createTimepoint": datetime.datetime.now(datetime.timezone.utc)})
 
 
 @app.route("/api/task_result", methods=['POST'])
 def task_result():
-    print("Received task result request")
     content = request.json
-    print(content)
-    taskId = content["taskId"]
-    task_result = manager.get_task_result(taskId)
-    return flask.send_file(
-        r"C:\Users\win10pc\slp-replay-converter-web\src\slp_replay_converter_web\web\.tmp\8d17a521-75c3-4bbd-bff7-320f650d7b25.tmp\.tmp_d5873843—c004—4bad—8dcc—728fcf80c0bb.mp4",
-        as_attachment=True,
-        download_name="foo",
-        mimetype="application/octet-stream",
-    )
+    task_id = content["taskId"]
+    task_result = manager.get_task_result(task_id)
+    # TODO: This is a really bad way to handle errors.
+    #       Probably should return json status with optional blob of the file to download, or split up this API.
+    if task_result:
+        return flask.send_file(
+            io.BytesIO(task_result.converted_replay),
+            as_attachment=True,
+            download_name=task_result.filename,
+            mimetype="application/octet-stream",
+        )
+    else:
+        return "Task is not done", 404
+
 
 if __name__ == "__main__":
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit uploads to 16MiB

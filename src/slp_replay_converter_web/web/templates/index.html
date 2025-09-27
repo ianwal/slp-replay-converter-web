@@ -47,8 +47,8 @@
             }
         }
 
-        // Fetch every 5 seconds
-        const fetchUpdateQueueSizeMs = 5000;
+        // Fetch the queue size periodically
+        const fetchUpdateQueueSizeMs = 1000;
         setInterval(updateQueueSizeText, fetchUpdateQueueSizeMs);
 
         // Initial fetch immediately
@@ -65,28 +65,26 @@
             // TODO: Do something here to show user that form is being submitted
             fetch(event.target.action, {
                 method: 'POST',
-                body: new URLSearchParams(new FormData(event.target))
+                body: new FormData(event.target)
             }).then((response) => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 return response.json().then(createdTask => { console.log(createdTask); activeTasks.push(createdTask) });
             }).then((body) => {
-                // TODO handle body
             }).catch((error) => {
-                // TODO handle error
+                // TODO: Handle error
                 console.error(error);
             });
 
             console.log(activeTasks);
         });
 
-        // Function to fetch new number from API
         function fetchResults() {
-            try {
-                // TODO: Send multiple at once to avoid a bunch of requests?
-                let i = activeTasks.length - 1;
-                while (i >= 0) {
+            // TODO: Send multiple at once to avoid a bunch of requests?
+            let i = activeTasks.length - 1;
+            while (i >= 0) {
+                try {
                     let taskId = activeTasks[i]["taskId"];
                     fetch("/api/task_result", {
                         method: 'POST',
@@ -96,8 +94,27 @@
                         },
                         body: JSON.stringify({ taskId: taskId })
                     }).then(response => {
-                        // Download the file
-                        // Have to do this weird element creation to download the file request.
+                        if (!response.ok) {
+                            response.text().then(text => {
+                                if (text === "Task does not exist") {
+                                    // Task is unknown on the server, so remove it.
+                                    activeTasks.pop()
+                                    return null;
+                                }
+                                else if (text === "Task is not done") {
+                                    // Task is not done. Continue.
+                                    return null;
+                                }
+                            })
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        // Success
+                        activeTasks.pop();
+                        console.log("Success.");
+
+                        // Download the file.
+                        // Need to do this weird element creation and simulated click to download the file request.
+
                         // Extract filename from Content-Disposition header
                         const disposition = response.headers.get('Content-Disposition');
                         let filename = 'downloaded-file';
@@ -113,21 +130,21 @@
                             link.remove();
                             window.URL.revokeObjectURL(link.href);
                         });
-                        // Success
-                        activeTasks.pop();
+                    }).catch(error => {
+                        // TODO: Handle error.
+                        // console.log(error);
                     });
-                    --i;
+                } catch (err) {
+                    console.log("Failed to fetch result: ");
+                    console.error(err);
                 }
-            } catch (err) {
-                console.log("Failed to fetch result: ");
-                console.error(err);
+                --i;
             }
         }
 
         // Fetch result periodically
         const fetchResultsMs = 1000;
-        let a = fetchResults.bind(activeTasks);
-        setInterval(a, fetchResultsMs);
+        setInterval(fetchResults.bind(activeTasks), fetchResultsMs);
     </script>
 
 </body>
