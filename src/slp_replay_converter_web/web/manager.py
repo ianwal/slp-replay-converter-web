@@ -7,8 +7,7 @@ import re
 from dataclasses import dataclass
 import queue
 import threading
-import io
-import time
+import hashlib
 
 
 def remove_trailing_black(input_file: Path, output_file: Path):
@@ -47,10 +46,7 @@ def _convert_replay(slp_replay: Path):
 
     # Trim trailing blackscreen from the video (if necessary)
     trimmed_file = tmpdir / f"{uuid.uuid4()}.mp4"
-    converted = remove_trailing_black(converted_filepath, trimmed_file)
-
-    with open(converted, "r+b") as f:
-        converted = f.read()
+    converted = remove_trailing_black(converted_filepath, trimmed_file).read_bytes()
     shutil.rmtree(tmpdir)
     return converted
 
@@ -60,6 +56,7 @@ class ConvertTask:
     task_id: str
     slp_replay: Path
     filename: str  # The resulting filename, e.g., foo.mp4
+    filehash: str  # The file hash of the slippi replay
 
 
 @dataclass
@@ -76,7 +73,7 @@ class Manager:
         self.finished_tasks_lock = threading.Lock()
         self.convert_thread = threading.Thread(target=self._convert_thread_loop)
         self.convert_thread.start()
-        # TODO: Periodically cleanup old slp files.
+        # TODO: Periodically cleanup old slp files and the converted files cache.
 
     def convert_replay(self, slp_replay: Path) -> bytes:
         res = _convert_replay(slp_replay)
@@ -86,14 +83,24 @@ class Manager:
         return self.task_queue.qsize()
 
     def push_convert_task(self, slp_replay: Path, filename: str) -> int:
-        task = ConvertTask(task_id=str(uuid.uuid4()), slp_replay=slp_replay, filename=filename)
+        task = ConvertTask(
+            task_id=str(uuid.uuid4()),
+            slp_replay=slp_replay,
+            filename=filename,
+            filehash=hashlib.md5(slp_replay.read_bytes()).hexdigest(),
+        )
         self.task_queue.put(task)
         return task.task_id
 
     def _convert_thread_loop(self):
+        converted_cache: dict[str, bytes] = {}  # filehash : converted_replay
         while True:
             task: ConvertTask = self.task_queue.get()
-            converted = self.convert_replay(task.slp_replay)
+            try:
+                converted = converted_cache[task.filehash]
+            except KeyError:
+                converted = self.convert_replay(task.slp_replay)
+                converted_cache[task.filehash] = converted
             result = ConvertTaskResult(task_id=task.task_id, converted_replay=converted, filename=task.filename)
 
             with self.finished_tasks_lock:
