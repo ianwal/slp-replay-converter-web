@@ -1,17 +1,16 @@
-from flask import Flask, request, request, render_template, send_from_directory
+from flask import Flask, request, request, render_template, send_from_directory, jsonify
 from flask_session import Session
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 import flask
-import subprocess
-import glob
-import shutil
 import io
+import uuid
 from pathlib import Path
+from .manager import Manager
 
 app = Flask(__name__)
 sess = Session()
-
+manager = Manager()
 
 def allowed_file(filename: str):
     ALLOWED_EXTENSIONS = {'slp'}
@@ -28,26 +27,13 @@ def home():
     return render_template("index.html")
 
 
-def convert_replay(slp_replay: Path):
-    converted_file = bytes()
-    tmpdir = Path(__file__).parent / ".tmp"
-    if tmpdir.exists() and tmpdir.is_dir():
-        shutil.rmtree(tmpdir)
-    tmpdir.mkdir(parents=True)
-    subprocess.run(["slp2mp4", "--output-directory", tmpdir, "single", slp_replay], check=True)
-    files = glob.glob(f"{tmpdir}/*")
-    if len(files) != 1:
-        print(files)
-        assert len(files) == 1
-    converted_filepath = files[0]
-    converted_file = open(converted_filepath, "r+b").read()
-    shutil.rmtree(tmpdir)
-    return converted_file
-
-
 @app.errorhandler(RequestEntityTooLarge)
 def file_too_large(e):
     return 'File is too large', RequestEntityTooLarge.code
+
+@app.route('/api/convert_queue_size', methods=['GET'])
+def convert_queue_size():
+    return jsonify({'size': manager.get_queue_size()})
 
 
 @app.route('/convert', methods=['POST'])
@@ -67,13 +53,17 @@ def upload_file():
 
     # Save the replay file
     filename = secure_filename(file.filename)
-    tmp_replay_file = "temp_file.slp"
+
+    tmpdir = Path(__file__).parent / ".tmp"
+    tmpdir.mkdir(exist_ok=True)
+
+    tmp_replay_file = tmpdir / f"{uuid.uuid4()}.slp"
     with open(tmp_replay_file, "wb") as f:
         pass
     file.save(tmp_replay_file)
 
     # Convert the replay file
-    converted_file = io.BytesIO(convert_replay(tmp_replay_file))
+    converted_file = io.BytesIO(manager.convert_replay(tmp_replay_file))
 
     return flask.send_file(
         converted_file,

@@ -22,9 +22,34 @@
                 <input type="file" name="file" />
                 <input type="submit" value="Upload & Convert" />
             </form>
+            <h2 id="convert_queue_size">Loading...</h1>
         </div>
-
     </div>
+
+
+    <script>
+        const numberElement = document.getElementById("convert_queue_size");
+
+        // Function to fetch new number from API
+        async function updateQueueSizeText() {
+            try {
+                fetch("/api/convert_queue_size")
+                    .then(res => res.json())
+                    .then(data => {
+                        numberElement.textContent = "Queue size: " + data.size;
+                    });
+            } catch (err) {
+                console.error(err);
+                numberElement.textContent = "Error fetching data";
+            }
+        }
+
+        // Fetch every 5 seconds
+        setInterval(updateQueueSizeText, 5000);
+
+        // Initial fetch immediately
+        updateQueueSizeText();
+    </script>
 
 </body>
 
